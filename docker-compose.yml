@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  vskim-k2-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vskim-k2-agent
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL}
+      - PORT=3000
+      - DEBUG=${DEBUG:-false}
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - vskim-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Optional: Redis for caching agent responses
+  redis:
+    image: redis:7-alpine
+    container_name: vskim-k2-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - vskim-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  vskim-network:
+    driver: bridge
+
+volumes:
+  redis-data:
